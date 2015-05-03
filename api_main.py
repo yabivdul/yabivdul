@@ -11,7 +11,7 @@ from vk import VK
 
 app = Flask(__name__)
 db = Db(host="ec2-54-163-227-94.compute-1.amazonaws.com",\
-	db="d91m3map07tqmv",
+	database="d91m3map07tqmv",
 	user="khpikwbwpupbry",\
 	password="lpKpnxDUjlR0T7VOy5GeWw6bD5")
 db.connect()
