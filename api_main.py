@@ -10,7 +10,10 @@ from db import Db
 from vk import VK
 
 app = Flask(__name__)
-db = Db(host="localhost",user="postgres",password="qwerty")
+db = Db(host="ec2-54-163-227-94.compute-1.amazonaws.com",\
+	db="d91m3map07tqmv",
+	user="khpikwbwpupbry",\
+	password="lpKpnxDUjlR0T7VOy5GeWw6bD5")
 db.connect()
 
 def parseVkId(str):
