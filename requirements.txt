@@ -6,3 +6,4 @@ itsdangerous==0.24
 psycopg2==2.5.4
 pyreadline==2.0
 requests==2.5.3
+gunicorn==0.17.2
