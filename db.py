@@ -35,7 +35,7 @@ class Db:
 		query = """
 		select session_id, vk_id, girl_left_id, girl_right_id from session where session_id=%s
 		"""
-		self.cursor.execute(query, (session_id))
+		self.cursor.execute(query, (session_id,))
 		res = self.cursor.fetchone()
 		if res is None:
 			return (None, None, None, None)
@@ -46,7 +46,7 @@ class Db:
 		query = """
 		select vk_id from session where session_id=%s
 		"""
-		self.cursor.execute(query, (session_id))
+		self.cursor.execute(query, (session_id,))
 		res = self.cursor.fetchone()
 		if res is None:
 			return res

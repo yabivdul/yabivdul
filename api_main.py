@@ -19,6 +19,8 @@ db.connect()
 
 def parseVkId(str):
 	# Try parsing without regexps for the sake of speed and simplicity
+	if str is None:
+		raise ValueError('Cannot parse vk id from {}'.format(str))
 	indx = str.find('vk.com/')
 	if indx < 0:
 		raise ValueError('Cannot parse vk id from {}'.format(str))
@@ -130,25 +132,29 @@ def selectGirlInPair(girlBetter, girlWorse):
 # New web-interface method
 @app.route("/")
 def getMain():
-	sessionId = getSessionId()
+	sessionId, vkIdStored, girlLeftStored, girlRightStored = getSessionParams()
 	
-	try:
-		vkId = parseVkId(request.args.get('vk_id'))
-		vkId = VK.getIdByShortName(vkId)
-	except ValueError:
-		return redirect(url_for('getMain'))
-		
-	if vkId is None and vkIdStored is None:
+	vkIdRaw = request.args.get('vk_id')
+	
+	if vkIdRaw is None and vkIdStored is None:
 		# No vk_id has been provided yet. Wait for it
-		resp = make_response(render_template('index.html', vk_id=vkId))
+		resp = make_response(render_template('index.html'))
 		resp.set_cookie('session_id', str(sessionId))
 		return resp
+	
+	vkId = None
+	try:
+		vkId = parseVkId(vkIdRaw)
+		vkId = VK.getIdByShortName(vkId)
+	except ValueError:
+		if vkIdStored is None:
+			return redirect(url_for('getMain'))
 	
 	if vkId is None and vkIdStored is not None:
 		vkId = vkIdStored
 	elif vkId != vkIdStored:
 		db.cleanupUsersForSession(sessionId)
-		db.updateStoredVkIdForSession(sessionId, vk_id)
+		db.updateStoredVkIdForSession(sessionId, vkId)
 	
 	# На этом этапе мы уже знаем, что ид у нас есть, но мы не знаем,
 	# грузили ли мы уже его подруг или нет. Надо проверить
@@ -174,9 +180,8 @@ def getMain():
 # Vote for left girl and redirect to index
 @app.route("/vote/left/")
 def voteLeft():
-	sessionId = getSessionId()
-	sessionIdStored, vkIdStored, girlLeftStored, girlRightStored = \
-		db.getSessionParams(session_id)
+	sessionId, vkIdStored, girlLeftStored, girlRightStored = getSessionParams()
+
 	if girlLeftStored is not None and girlRightStored is not None:
 		db.storeChosenGirl(girlLeftStored, girlRightStored)
 		
@@ -184,9 +189,7 @@ def voteLeft():
 
 @app.route("/vote/right/")
 def voteRight():
-	sessionId = getSessionId()
-	sessionIdStored, vkIdStored, girlLeftStored, girlRightStored = \
-		db.getSessionParams(session_id)
+	sessionId, vkIdStored, girlLeftStored, girlRightStored = getSessionParams()
 	if girlLeftStored is not None and girlRightStored is not None:
 		db.storeChosenGirl(girlRightStored, girlLeftStored)
 		
@@ -194,21 +197,21 @@ def voteRight():
 
 @app.route("/vote/skip/")
 def voteSkip():
-	sessionId = getSessionId()
+	sessionId, vkIdStored, girlLeftStored, girlRightStored = getSessionParams()
 	
 	return redirect(url_for('getMain'))
 
-def getSessionId():
+def getSessionParams():
 	sessionId = request.cookies.get('session_id')
-	if session_id is None:
+	if sessionId is None:
 		#no session id found. Start new session
-		session_id = db.createSession()
+		sessionId = db.createSession()
 	# Check if such session id is in db
 	sessionIdStored, vkIdStored, girlLeftStored, girlRightStored = \
-		db.getSessionParams(session_id)
+		db.getSessionParams(sessionId)
 	if sessionIdStored is None:
 		sessionId = db.createSession()
-	return sessionId
+	return (sessionId, vkIdStored, girlLeftStored, girlRightStored)
 
 if __name__ == '__main__':
 	app.run(debug=True)

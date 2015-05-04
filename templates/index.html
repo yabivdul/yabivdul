@@ -58,7 +58,11 @@
       <div class="col-xs-10 col-md-7 col-sm-10">
         <form action="/" method="GET" id="vk_url">
           <div class="form-group">
+			{% if vk_id %}
             <input type="text" size="50" name="vk_id" id="vk_id_url" value={{ vk_id }} class="form-control required" placeholder="URL страницы ВК*"/>
+            {% else %}
+            <input type="text" size="50" name="vk_id" id="vk_id_url" value="" class="form-control required" placeholder="URL страницы ВК*"/>
+            {% endif %}
           </div>
           <button type="submit" class="btn btn-default">Начать сравнивать</button>
         </form>
@@ -69,7 +73,7 @@
 <!-- /Header and VK URL --> 
 
 
-
+{% if girl1 and girl2 %}
 <!-- Vote section -->
 <div id="about" class="about">
   <div class="container">
@@ -105,6 +109,7 @@
     </div>
   </div>
 </div>
+{% endif %}
 <!-- Vote section --> 
 
 
