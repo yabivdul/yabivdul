@@ -33,14 +33,14 @@ class Db:
 	
 	def getSessionParams(self, session_id):
 		query = """
-		select session_id, vk_id from session where session_id=%s
+		select session_id, vk_id, girl_left_id, girl_right_id from session where session_id=%s
 		"""
 		self.cursor.execute(query, (session_id))
 		res = self.cursor.fetchone()
 		if res is None:
-			return (None, None)
+			return (None, None, None, None)
 		else:
-			return (res[0], res[1])
+			return (res[0], res[1], res[2], res[3])
 	
 	def getStoredVkIdForSession(self, session_id):
 		query = """
@@ -104,6 +104,25 @@ class Db:
 		) for data_chunk in users)
 		query += data
 		self.cursor.execute(query)
+		self.__con.commit()
+	
+	def areFriendsLoaded(self, sessionId):
+		query = """
+		select count(*) from girls where session_id=%s
+		"""
+		self.cursor.execute(query, (sessionId,))
+		count = self.cursor.fetchone()
+		if count is None or count[0] < 1:
+			return False
+		else:
+			return True
+	
+	def updateStoredGirlsForSession(self, sessionId, girlLeftId, girlRightId):
+		query = """
+		update session set girl_left_id = %s, girl_right_id = %s where
+		session_id = %s
+		"""
+		self.cursor.execute(query, (girlLeftId, girlRightId, sessionId))
 		self.__con.commit()
 	
 	def cleanupUsersForSession(self, session_id):
