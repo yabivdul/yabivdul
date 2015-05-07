@@ -10,6 +10,7 @@ from flask import Flask, render_template, \
 from db import Db
 from vk import VK
 from credentials import dbCredentials
+from flask import json
 
 app = Flask(__name__)
 db = Db(**dbCredentials)
@@ -130,6 +131,23 @@ def voteSkip():
 	sessionId, vkIdStored, girlLeftStored, girlRightStored = getSessionParams()
 	
 	return redirect(url_for('getMain'))
+
+@app.route("/api/rating/", methods=['GET'])
+def getRatingApi():
+	try:
+		lowerRank = int(request.args.get('lower_rank'))
+		higherRank = int(request.args.get('higher_rank'))
+		assert lowerRank <= higherRank
+		assert lowerRank >= 0
+		assert higherRank - lowerRank < 100
+	except (TypeError, AssertionError):
+		return json.jsonify(
+			ranks=[],
+			error=True,
+			error_description='Invalid parameters for request'
+		)
+	return json.jsonify(ranks=db.getRating(lowerRank, higherRank))
+	
 
 def getSessionParams():
 	sessionId = request.cookies.get('session_id')

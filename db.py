@@ -125,6 +125,14 @@ class Db:
 		self.cursor.execute(query, (girlLeftId, girlRightId, sessionId))
 		self.__con.commit()
 	
+	def getRating(self, lowerRank, higherRank):
+		query = """
+		select vk_id from girl_stats where rating notnull order by rating desc limit %s offset %s
+		"""
+		self.cursor.execute(query, (higherRank-lowerRank, lowerRank))
+		ratings = [row[0] for row in self.cursor.fetchall()]
+		return ratings
+	
 	def cleanupUsersForSession(self, session_id):
 		query = """
 		delete from girls where session_id=%s
