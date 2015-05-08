@@ -70,28 +70,40 @@ class Db:
 		return data
 	
 	def storeChosenGirl(self, girlBetterId, girlWorseId):
-		# first check if such pair already exists
-		query = """
-		select counts from girl_pair_votes where id_better=%s and id_worse=%s
+		insGirls = []
+		#check if such girls already exist in girl_stats table
+		query_check = """
+		select vk_id from girl_stats where vk_id in (%s, %s)
 		"""
-		self.cursor.execute(query,(girlBetterId, girlWorseId))
-		counts = self.cursor.fetchone()
-		if counts is None:
-			#no such pair in db yet
-			counts = 0
-			query = """
-			insert into girl_pair_votes values (%s, %s, %s)
-			"""
-			self.cursor.execute(query, (girlBetterId, girlWorseId, counts))
+		self.cursor.execute(query_check, (girlWorseId, girlBetterId,))
+		dbGirls = self.cursor.fetchall()
+		if dbGirls is None:
+			insGirls = (girlBetterId, girlWorseId,)
 		else:
-			counts = counts[0]
+			insGirls = [row[0] for row in dbGirls if row[0] not in (girlBetterId, girlWorseId,)]
 		
-		#increment current pair counts and update it in db
-		counts += 1
-		query = """
-		update girl_pair_votes set counts=%s where id_better=%s and id_worse=%s
+		query_ins = """
+		insert into girl_stats (vk_id, votes_for, votes_against, rating)
+		values (%s, 0, 0, NULL)
 		"""
-		self.cursor.execute(query, (counts, girlBetterId, girlWorseId))
+		for insGirl in insGirls:
+			self.cursor.execute(query_ins, (insGirl, ))
+		self.__con.commit()
+		
+		
+		query_update_for = """
+		update girl_stats set votes_for = votes_for + 1 where vk_id=%s
+		"""
+		query_update_against = """
+		update girl_stats set votes_against = votes_against + 1 where vk_id = %s
+		"""
+		query_update_rating = """
+		update girl_stats set rating = (votes_for::numeric / (votes_for::numeric + votes_against::numeric))
+		where vk_id in (%s, %s)
+		"""
+		self.cursor.execute(query_update_for, (girlBetterId, ))
+		self.cursor.execute(query_update_against, (girlWorseId, ))
+		self.cursor.execute(query_update_rating, (girlWorseId, girlBetterId,))
 		self.__con.commit()
 	
 	def storeUsersForSession(self, session_id, users):
