@@ -6,16 +6,24 @@
 
 from flask import Flask, render_template, \
 	jsonify, request, make_response, redirect, \
-	url_for
+	url_for, g, json
 from db import Db
 from vk import VK
 from credentials import dbCredentials
-from flask import json
 
 app = Flask(__name__)
-db = Db(**dbCredentials)
 
-db.connect()
+@app.before_request
+def dbConnect():
+	db = Db(**dbCredentials)
+	db.connect()
+	g.db = db
+
+@app.teardown_request
+def dbCleanup(exception):
+	db = getattr(g, 'db', None)
+	if db is not None:
+		db.disconnect()
 
 def parseVkId(str):
 	# Try parsing without regexps for the sake of speed and simplicity
@@ -40,7 +48,7 @@ class GirlPair:
 		self.girl2 = girl2
 		
 	@staticmethod
-	def getRandomPair(session_id):
+	def getRandomPair(session_id, db):
 		id = db.getRandomIdPairForSession(session_id)
 		#get pics from vk by returned ids
 		pic = (VK.getPicUrlById(id[0]), VK.getPicUrlById(id[1]))
@@ -50,20 +58,21 @@ class GirlPair:
 #api method
 @app.route("/getgirlpair")
 def getGirlPair():
-	randomPair = GirlPair.getRandomPair()
+	db = getattr(g, 'db', None)
+	randomPair = GirlPair.getRandomPair(db)
 	return json(randomPair)
 
 #api method
 @app.route("/select/") #!!
 def selectGirlInPair(girlBetter, girlWorse):
-	db.connect()
+	db = getattr(g, 'db', None)
 	db.storeChosenGirl(girlBetter, girlWorse)
-	db.disconnect()
 
 # web-interface method
 @app.route("/")
 def getMain():
-	sessionId, vkIdStored, girlLeftStored, girlRightStored = getSessionParams()
+	db = getattr(g, 'db', None)
+	sessionId, vkIdStored, girlLeftStored, girlRightStored = getSessionParams(db)
 	
 	vkIdRaw = request.args.get('vk_id')
 	
@@ -97,7 +106,7 @@ def getMain():
 	
 	# Теперь мы уверены, что инфа по подругам в базе. Достаем рандомную
 	# пару и грузим ссылки на их аватарки из вконтакта
-	girl1, girl2 = GirlPair.getRandomPair(sessionId)
+	girl1, girl2 = GirlPair.getRandomPair(sessionId, db)
 	# Апдейтим запись в сессии новыми айдишниками девочек
 	db.updateStoredGirlsForSession(sessionId, girl1.id, girl2.id)
 	
@@ -111,7 +120,8 @@ def getMain():
 # Vote for left girl and redirect to index
 @app.route("/vote/left/")
 def voteLeft():
-	sessionId, vkIdStored, girlLeftStored, girlRightStored = getSessionParams()
+	db = getattr(g, 'db', None)
+	sessionId, vkIdStored, girlLeftStored, girlRightStored = getSessionParams(db)
 
 	if girlLeftStored is not None and girlRightStored is not None:
 		db.storeChosenGirl(girlLeftStored, girlRightStored)
@@ -120,7 +130,8 @@ def voteLeft():
 
 @app.route("/vote/right/")
 def voteRight():
-	sessionId, vkIdStored, girlLeftStored, girlRightStored = getSessionParams()
+	db = getattr(g, 'db', None)
+	sessionId, vkIdStored, girlLeftStored, girlRightStored = getSessionParams(db)
 	if girlLeftStored is not None and girlRightStored is not None:
 		db.storeChosenGirl(girlRightStored, girlLeftStored)
 		
@@ -128,12 +139,14 @@ def voteRight():
 
 @app.route("/vote/skip/")
 def voteSkip():
-	sessionId, vkIdStored, girlLeftStored, girlRightStored = getSessionParams()
+	db = getattr(g, 'db', None)
+	sessionId, vkIdStored, girlLeftStored, girlRightStored = getSessionParams(db)
 	
 	return redirect(url_for('getMain'))
 
 @app.route("/api/rating/", methods=['GET'])
 def getRatingApi():
+	db = getattr(g, 'db', None)
 	try:
 		lowerRank = int(request.args.get('lower_rank'))
 		higherRank = int(request.args.get('higher_rank'))
@@ -149,7 +162,7 @@ def getRatingApi():
 	return json.jsonify(ranks=db.getRating(lowerRank, higherRank))
 	
 
-def getSessionParams():
+def getSessionParams(db):
 	sessionId = request.cookies.get('session_id')
 	if sessionId is None:
 		#no session id found. Start new session
@@ -162,4 +175,4 @@ def getSessionParams():
 	return (sessionId, vkIdStored, girlLeftStored, girlRightStored)
 
 if __name__ == '__main__':
-	app.run(debug=True)
+	app.run()

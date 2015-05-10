@@ -153,5 +153,5 @@ class Db:
 		self.__con.commit()
 	
 	def disconnect(self):
-		#!! not implemented yet
-		pass
+		self.cursor.close()
+		self.__con.close()
