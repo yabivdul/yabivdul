@@ -12,10 +12,10 @@ from vk import VK
 from credentials import dbCredentials
 
 app = Flask(__name__)
+db = Db(**dbCredentials)
 
 @app.before_request
 def dbConnect():
-	db = Db(**dbCredentials)
 	db.connect()
 	g.db = db
 

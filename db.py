@@ -1,13 +1,16 @@
 import psycopg2
+from psycopg2.pool import SimpleConnectionPool
 
 class Db:
 	def __init__(self, **connAgrs):
 		self.connArgs = connAgrs
 		self.cursor = None
+		self.conn_pool = SimpleConnectionPool(minconn=10, maxconn=20, **self.connArgs)
 	
 	def connect(self):
 		if self.cursor is None:
-			self.__con = psycopg2.connect(**self.connArgs)
+			#self.__con = psycopg2.connect(**self.connArgs)
+			self.__con = self.conn_pool.getconn()
 			self.cursor = self.__con.cursor()
 	
 	def getMaxSessionId(self):
@@ -154,4 +157,6 @@ class Db:
 	
 	def disconnect(self):
 		self.cursor.close()
-		self.__con.close()
+		#self.__con.close()
+		self.conn_pool.putconn(self.__con)
+		self.__con = None
