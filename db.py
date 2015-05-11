@@ -4,12 +4,12 @@ from psycopg2.pool import SimpleConnectionPool
 class Db:
 	def __init__(self, **connAgrs):
 		self.connArgs = connAgrs
-		self.cursor = None
 		self.conn_pool = SimpleConnectionPool(minconn=10, maxconn=20, **self.connArgs)
+		self.__con = None
+		self.cursor = None
 	
 	def connect(self):
 		if self.cursor is None:
-			#self.__con = psycopg2.connect(**self.connArgs)
 			self.__con = self.conn_pool.getconn()
 			self.cursor = self.__con.cursor()
 	
@@ -156,7 +156,9 @@ class Db:
 		self.__con.commit()
 	
 	def disconnect(self):
-		self.cursor.close()
-		#self.__con.close()
-		self.conn_pool.putconn(self.__con)
+		if self.cursor is not None:
+			self.cursor.close()
+		if self.__con is not None:
+			self.conn_pool.putconn(self.__con)
 		self.__con = None
+		self.cursor = None
