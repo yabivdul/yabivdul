@@ -33,14 +33,25 @@ def dbCleanup(exception):
 		db.disconnect()
 
 def parseVkId(str):
+	parsedId = None
 	# Try parsing without regexps for the sake of speed and simplicity
-	if str is None:
+	if str is None or len(str) == 0:
 		raise ValueError('Cannot parse vk id from {}'.format(str))
 	indx = str.find('vk.com/')
 	if indx < 0:
-		raise ValueError('Cannot parse vk id from {}'.format(str))
-	indx += len('vk.com/')
-	return str[indx:]
+		# Maybe we got an already parsed vk_id?
+		try:
+			parsedId = int(str)
+		except ValueError:
+			# Nope, we didnt. Report error
+			raise ValueError('Cannot parse vk id from {}'.format(str))
+	else:
+		indx += len('vk.com/')
+		parsedId = str[indx:]
+	
+	# Now we need to make sure that user with such id exists
+	id = VK.getIdByShortName(parsedId)
+	return id
 
 class Girl:
 	def __init__(self, id, pic):

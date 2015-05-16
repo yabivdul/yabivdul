@@ -17,7 +17,13 @@ class VK:
 	def getIdByShortName(name):
 		query = "http://api.vk.com/method/users.get?user_ids={}&v=5.30".format(name)
 		res = requests.get(query)
-		return res.json()['response'][0]['id']
+		response = res.json()['response']
+		if len(response) == 0:
+			raise ValueError("Cannot find user with name {}".format(name))
+		id = response[0].get('id', None)
+		if id is None:
+			raise ValueError("Cannot find user with name {}".format(name))
+		return id
 	
 	@staticmethod
 	def getFriendsIds(id):
