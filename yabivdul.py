@@ -3,6 +3,13 @@
 # Request main page(get session id) -> Provide user id to parse friends from ->
 # Request voting page -> Vote -> Request voting page ->...
 
+# Url map:
+# /
+# /api/vote/		(parameters: id_voted)
+# /api/rating/		(parameters: lower_rank, higher_rank) 
+# /api/get_random_pair/
+# /vote/left/		DEPRECATED
+# /vote/right/		DEPRECATED
 
 from flask import Flask, render_template, \
 	jsonify, request, make_response, redirect, \
@@ -55,18 +62,6 @@ class GirlPair:
 		girls = (Girl(id[0], pic[0]), Girl(id[1], pic[1]))
 		return girls
 
-#api method
-@app.route("/getgirlpair")
-def getGirlPair():
-	db = getattr(g, 'db', None)
-	randomPair = GirlPair.getRandomPair(db)
-	return json(randomPair)
-
-#api method
-@app.route("/select/") #!!
-def selectGirlInPair(girlBetter, girlWorse):
-	db = getattr(g, 'db', None)
-	db.storeChosenGirl(girlBetter, girlWorse)
 
 # web-interface method
 @app.route("/")
@@ -116,7 +111,7 @@ def getMain():
 		vk_id=vkId, girl1=girl1, girl2=girl2))
 	resp.set_cookie('session_id', str(sessionId))
 	return resp
-	
+
 # Vote for left girl and redirect to index
 @app.route("/vote/left/")
 def voteLeft():
@@ -143,6 +138,35 @@ def voteSkip():
 	sessionId, vkIdStored, girlLeftStored, girlRightStored = getSessionParams(db)
 	
 	return redirect(url_for('getMain'))
+
+#api method
+@app.route("/api/get_random_pair", methods=['GET'])
+def getGirlPair():
+	db = getattr(g, 'db', None)
+	#!! TODO: add error processing here
+	randomPair = GirlPair.getRandomPair(db)
+	return json(randomPair)
+
+@app.route("/api/vote/", methods=['GET'])
+def vote():
+	db = getattr(g, 'db', None)
+	sessionId, vkIdStored, girlLeftStored, girlRightStored = getSessionParams(db)
+	
+	try:
+		idVoted = int(request.args.get('id_voted'))
+	except (TypeError):
+		return json.jsonify(
+			error=True,
+			error_description='Cannot resolve vk_id'
+		)
+	idNonVoted = set((girlLeftStored, girlRightStored)) - set((idVoted,))
+	
+	if girlLeftStored is not None and girlRightStored is not None:
+		db.storeChosenGirl(girlBetterId=idVoted, girlWorseId=idNonVoted)
+		return json.jsonify(
+			id_voted=idVoted,
+			id_non_voted=idNonVoted
+		)
 
 @app.route("/api/rating/", methods=['GET'])
 def getRatingApi():
